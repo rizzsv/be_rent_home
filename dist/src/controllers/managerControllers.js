@@ -9,8 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.UpdateManager = exports.CreateManager = exports.getManager = void 0;
+exports.getManagerProperty = exports.UpdateManager = exports.CreateManager = exports.getManager = void 0;
 const client_1 = require("@prisma/client");
+const wkt_1 = require("@terraformer/wkt");
 const prisma = new client_1.PrismaClient();
 const getManager = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -67,3 +68,33 @@ const UpdateManager = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.UpdateManager = UpdateManager;
+const getManagerProperty = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { cognitoId } = req.params;
+        const manager = yield prisma.manager.findUnique({
+            where: { cognitoId }
+        });
+        const properties = yield prisma.property.findMany({
+            where: { managerCognitoId: cognitoId },
+            include: {
+                location: true,
+            }
+        });
+        const propertiesWithFormattedLocation = yield Promise.all(properties.map((property) => __awaiter(void 0, void 0, void 0, function* () {
+            var _a;
+            const coordinates = yield prisma.$queryRaw `SELECT ST_asText(coordinates) as coordinates FROM "Location" WHERE id = ${property.location.id}`;
+            const geoJSON = (0, wkt_1.wktToGeoJSON)(((_a = coordinates[0]) === null || _a === void 0 ? void 0 : _a.coordinates) || "");
+            const longitude = geoJSON.coordinates[0];
+            const latitude = geoJSON.coordinates;
+            return Object.assign(Object.assign({}, property), { location: Object.assign(Object.assign({}, property.location), { coordinates: {
+                        longitude,
+                        latitude,
+                    } }) });
+        })));
+        res.json(propertiesWithFormattedLocation);
+    }
+    catch (error) {
+        res.status(500).json({ message: `Error retrieving managerProperty: ${error.message} ` });
+    }
+});
+exports.getManagerProperty = getManagerProperty;
