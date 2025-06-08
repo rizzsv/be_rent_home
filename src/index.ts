@@ -11,6 +11,7 @@ import tenantRoutes from "./routes/tenantRoutes";
 import managerRoutes from "./routes/managerRoutes";
 import propertyRoutes from "./routes/propertyRoutes";
 import leaseRouter from "./routes/leaseRoutes";
+import applicationRouter from "./routes/applicationsRouter";
 
 /** Router Import */
 
@@ -30,6 +31,7 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 
+app.use("/applications", applicationRouter)
 app.use("/properties", propertyRoutes)
 app.use("/leases", leaseRouter)
 app.use("/tenants", authMiddleware(["tenant"]), tenantRoutes)

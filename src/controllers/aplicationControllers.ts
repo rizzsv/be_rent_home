@@ -153,9 +153,75 @@ export const createApplications = async (req: Request, res: Response): Promise<v
     }
 }
 
-export const getLeasesPayments = async (req: Request, res: Response): Promise<void> => {
+export const updateApplication = async (req: Request, res: Response): Promise<void> => {
     try {
+        const {id} = req.params;
+        const {status} = req.body;
+
+        const applications = await prisma.application.findUnique({
+            where: {id: Number(id)},
+            include: {
+                property: true,
+                tenant: true,
+            }
+        });
+
+        if(!applications) {
+            res.status(404).json({message: "Application not found"})
+            return; 
+        }
+
+        if (status === "Approved") {
+            const newLease = await prisma.lease.create({
+                data: {
+                    startDate: new Date(),
+                    endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+                    rent: applications.property.pricePerMonth,
+                    deposit: applications.property.securityDeposit,
+                    propertyId: applications.propertyId,
+                    tenantCognitoId: applications.tenantCognitoId,
+                },
+            });
+
+      // Update the property to connect the tenant
+      await prisma.property.update({
+        where: { id: applications.propertyId },
+        data: {
+          tenants: {
+            connect: { cognitoId: applications.tenantCognitoId },
+          },
+        },
+      });
+
+      // Update the application with the new lease ID
+      await prisma.application.update({
+        where: { id: Number(id) },
+        data: { status, leaseId: newLease.id },
+        include: {
+          property: true,
+          tenant: true,
+          lease: true,
+        },
+      });
+        } else {
+            await prisma.application.update({
+                where: {id: Number(id)},
+                data: {status},
+            })
+        }
+
+        //respond with updated application details
+        const updateApplication = await prisma.application.findUnique({
+            where: {id: Number(id)},
+            include: {
+                property: true,
+                tenant: true,
+                lease: true,
+            }
+        });
+
+        res.json(updateApplication);
     } catch (error: any) {
-        res.status(500).json({message: `Error retrieving payments: ${error.message} `})
+        res.status(500).json({message: `Error updating application status: ${error.message} `})
     }
 }
