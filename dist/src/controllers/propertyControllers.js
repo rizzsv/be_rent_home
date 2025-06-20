@@ -72,10 +72,10 @@ const getproperties = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 const date = new Date(availableFromDate);
                 if (!isNaN(date.getTime())) {
                     whereConditions.push(client_1.Prisma.sql `EXIST (
-                    SELECT 1 FROM "Lease" l
-                    WHERE l."propertyId" = p.id
-                    AND l."startDate" >= ${date.toISOString()}
-                )`);
+                        SELECT 1 FROM "Lease" l
+                        WHERE l."propertyId" = p.id
+                        AND l."startDate" >= ${date.toISOString()}
+                    )`);
                 }
             }
         }
@@ -85,33 +85,33 @@ const getproperties = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             const radiusInKilometers = 1000;
             const degrees = radiusInKilometers / 111;
             whereConditions.push(client_1.Prisma.sql `ST_DWithin(
-                    l.cordinates::geometry,
-                    ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326),
-                    ${degrees}
-                )`);
+                        l.coordinates::geometry,
+                        ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326),
+                        ${degrees}
+                    )`);
         }
         const completeQuery = client_1.Prisma.sql `
-        SELECT
-            p.*,
-            json_build_object(
-                'id', l.id,
-                'address', l.address,
-                'city', l.city,
-                'state', l.state,
-                'country', l.country,
-                'postalcode', l."postalCode",
-                'cordinates', json_build_object(
-                    'latitude', ST_Y(l."cordinates"::geometry),
-                    'longitude', ST_X(l."cordinates"::geometry)
-                )  
-            ) as location
+            SELECT
+                p.*,
+                json_build_object(
+                    'id', l.id,
+                    'address', l.address,
+                    'city', l.city,
+                    'state', l.state,
+                    'country', l.country,
+                    'postalcode', l."postalCode",
+                    'coordinates', json_build_object(
+                        'latitude', ST_Y(l."coordinates"::geometry),
+                        'longitude', ST_X(l."coordinates"::geometry)
+                    )  
+                ) as location
 
-            FROM "Property" p
-            JOIN "Location" l ON p."locationId" = l.id
-            ${whereConditions.length > 0
+                FROM "Property" p
+                JOIN "Location" l ON p."locationId" = l.id
+                ${whereConditions.length > 0
             ? client_1.Prisma.sql `WHERE ${client_1.Prisma.join(whereConditions, " AND ")}`
             : client_1.Prisma.empty}
-        `;
+            `;
         const properties = yield prisma.$queryRaw(completeQuery);
         res.json(properties);
     }
@@ -175,7 +175,7 @@ const createProperty = (req, res) => __awaiter(void 0, void 0, void 0, function*
         }).toString()}`;
         const geocodingResponse = yield axios_1.default.get(geocodingUrl, {
             headers: {
-                "User-Agent": "RealEstateApp (justsomedummyemail@gmail.com)"
+                "User-Agent": "RealEstateApp (rizq.syafriano@gmail.com)"
             }
         });
         const [longitude, latitude] = ((_a = geocodingResponse.data[0]) === null || _a === void 0 ? void 0 : _a.lon) && ((_b = geocodingResponse.data[0]) === null || _b === void 0 ? void 0 : _b.lat)
@@ -186,10 +186,10 @@ const createProperty = (req, res) => __awaiter(void 0, void 0, void 0, function*
             : [0, 0];
         // create location
         const [location] = yield prisma.$queryRaw `
-      INSERT INTO "Location" (address, city, state, country, "postalCode", coordinates)
-      VALUES (${address}, ${city}, ${state}, ${country}, ${postalCode}, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326))
-      RETURNING id, address, city, state, country, "postalCode", ST_AsText(coordinates) as coordinates;
-    `;
+        INSERT INTO "Location" (address, city, state, country, "postalCode", coordinates)
+        VALUES (${address}, ${city}, ${state}, ${country}, ${postalCode}, ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326))
+        RETURNING id, address, city, state, country, "postalCode", ST_AsText(coordinates) as coordinates;
+        `;
         // create property
         const newProperty = yield prisma.property.create({
             data: Object.assign(Object.assign({}, propertyData), { photoUrls, locationId: location.id, managerCognitoId, highlights: typeof propertyData.highlights === "string" ? propertyData.highlights.split(",") : [], isPetsAllowed: propertyData.isPetsAllowed === "true", isParkingIncluded: propertyData.isParkingIncluded === "true", pricePerMonth: parseFloat(propertyData.pricePerMonth), securityDeposit: parseFloat(propertyData.securityDeposit), applicationFee: parseFloat(propertyData.applicationFee), beds: parseInt(propertyData.beds), baths: parseInt(propertyData.baths), squareFeet: parseInt(propertyData.squareFeet) }),
